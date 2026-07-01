@@ -89,6 +89,11 @@
   }
   button:hover{background:var(--brass-dark);}
   button:active{transform:scale(.98);}
+  button:disabled{opacity:.55;cursor:not-allowed;}
+
+  #status{font-family:'IBM Plex Mono',monospace;font-size:13px;text-align:center;min-height:18px;}
+  #status.ok{color:var(--ok);}
+  #status.err{color:var(--err);}
 
   .req{color:var(--brass-dark);}
 </style>
@@ -109,21 +114,10 @@
   </div>
 
   <div class="aviso">
-    Anexe os documentos escaneados ou fotografados. Some de todos os arquivos: até <b>10MB no total</b> por envio.
+    Anexe os documentos escaneados ou fotografados. Recomendado: até ~15MB no total por envio.
   </div>
 
-  <!--
-    Envios chegam em: legalizacaobetel@gmail.com
-    No primeiro envio de teste, o FormSubmit manda um e-mail de confirmação pra esse endereço:
-    é preciso clicar no link de ativação antes do formulário passar a funcionar de fato.
-  -->
-  <form id="admissao-form" action="https://formsubmit.co/legalizacaobetel@gmail.com" method="POST" enctype="multipart/form-data">
-
-    <!-- Configurações do FormSubmit -->
-    <input type="hidden" name="_subject" value="Nova admissão">
-    <input type="hidden" name="_template" value="table">
-    <input type="hidden" name="_captcha" value="true">
-    <input type="text" name="_honey" style="display:none">
+  <form id="admissao-form">
 
     <!-- ===== FL 01/02 ===== -->
     <div class="folha" data-fl="FL. 01/02">
@@ -277,7 +271,8 @@
       </div>
 
       <div class="submit-bar">
-        <button type="submit">Enviar para o Escritório Betel</button>
+        <button type="submit" id="btn-enviar">Enviar para o Escritório Betel</button>
+        <div id="status"></div>
       </div>
     </div>
 
@@ -285,13 +280,108 @@
 </div>
 
 <script>
+  // ================= CONFIGURAÇÃO =================
+  // Cole aqui a URL do seu Web App do Google Apps Script (termina em /exec)
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwn9c5W3kdgycVNFJ4gl03TmfJvDrMWOvzQftHV8t78OS_h6XveC-MBZkSTEA4OH4w/exec";
+  // ==================================================
+
   const dtInput = document.getElementById('data_preenchimento');
   if (dtInput) dtInput.value = new Date().toISOString().split('T')[0];
 
-  document.getElementById('admissao-form').addEventListener('submit', function(){
-    const razao = this.querySelector('[name="Razao_Social"]').value || 'Empresa';
-    const func = this.querySelector('[name="Nome_Funcionario"]').value || 'Funcionário';
-    this.querySelector('[name="_subject"]').value = 'Admissao - ' + razao + ' - ' + func;
+  const form = document.getElementById('admissao-form');
+  const statusEl = document.getElementById('status');
+  const btn = document.getElementById('btn-enviar');
+
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function collectFiles() {
+    const fileInputs = form.querySelectorAll('input[type=file]');
+    const files = [];
+    for (const input of fileInputs) {
+      for (const file of input.files) {
+        const base64 = await fileToBase64(file);
+        files.push({
+          fieldName: input.name,
+          filename: file.name,
+          mimeType: file.type || 'application/octet-stream',
+          base64: base64
+        });
+      }
+    }
+    return files;
+  }
+
+  function collectFields() {
+    const fields = {};
+    const elements = form.querySelectorAll('input, textarea');
+    elements.forEach(el => {
+      if (el.type === 'file') return;
+      if (el.type === 'checkbox') {
+        if (el.checked) fields[el.name] = el.value || 'Sim';
+        return;
+      }
+      if (el.type === 'radio') {
+        if (el.checked) fields[el.name] = el.value;
+        return;
+      }
+      if (el.name) fields[el.name] = el.value;
+    });
+    return fields;
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    statusEl.textContent = '';
+    statusEl.className = '';
+
+    if (APPS_SCRIPT_URL.indexOf('COLE_AQUI') !== -1) {
+      statusEl.textContent = 'Configuração pendente: cole a URL do Apps Script no código.';
+      statusEl.className = 'err';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+    statusEl.textContent = 'Preparando anexos...';
+    statusEl.className = '';
+
+    try {
+      const fields = collectFields();
+      const files = await collectFiles();
+
+      statusEl.textContent = 'Enviando para o Escritório Betel...';
+
+      const response = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ fields, files })
+      });
+
+      const result = await response.json();
+
+      if (result.status === 'ok') {
+        statusEl.textContent = 'Enviado com sucesso! O Escritório Betel recebeu os dados.';
+        statusEl.className = 'ok';
+        form.reset();
+        if (dtInput) dtInput.value = new Date().toISOString().split('T')[0];
+      } else {
+        throw new Error(result.message || 'Erro no envio');
+      }
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = 'Erro ao enviar: ' + err.message;
+      statusEl.className = 'err';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Enviar para o Escritório Betel';
+    }
   });
 </script>
 </body>
