@@ -115,8 +115,17 @@
     font-size:26px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:4px 10px;
   }
   .modal-close:hover{color:var(--err);background:none;}
-  .modal-title{font-family:'Fraunces',serif;font-weight:600;font-size:21px;margin:4px 0 4px;text-align:center;color:var(--ok);}
-  .modal-sub{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-soft);margin-bottom:20px;}
+  .modal-badge{
+    width:58px;height:58px;border-radius:50%;
+    background:var(--ok);color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:28px;margin:0 auto 16px;
+    box-shadow:0 6px 16px rgba(76,107,79,0.35);
+    animation:popIn .35s ease;
+  }
+  @keyframes popIn{0%{transform:scale(0);opacity:0;}70%{transform:scale(1.12);}100%{transform:scale(1);opacity:1;}}
+  .modal-title{font-family:'Fraunces',serif;font-weight:600;font-size:22px;margin:0 0 6px;text-align:center;color:var(--ink);}
+  .modal-sub{text-align:center;font-family:'Inter',sans-serif;font-size:13.5px;color:var(--ink-soft);margin-bottom:22px;line-height:1.5;}
   .modal-actions{display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap;}
   .modal-actions button{padding:12px 22px;font-size:14px;}
   .btn-secondary{background:#fff !important;color:var(--ink) !important;border:1.5px solid var(--ink) !important;}
@@ -334,8 +343,9 @@
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal-box">
     <button type="button" class="modal-close" id="modal-close" aria-label="Fechar">&times;</button>
-    <div class="modal-title">✓ Enviado com sucesso</div>
-    <div class="modal-sub">O Escritório Betel recebeu os dados. Confira o resumo abaixo.</div>
+    <div class="modal-badge">✓</div>
+    <div class="modal-title">Enviado com sucesso!</div>
+    <div class="modal-sub">O Escritório Betel recebeu os dados.<br>Confira o resumo abaixo — você pode imprimir ou salvar em PDF.</div>
 
     <div id="recibo-imprimir">
       <div id="recibo-wrap">
@@ -538,9 +548,6 @@
   const modalOverlay = document.getElementById('modal-overlay');
   document.getElementById('modal-close').addEventListener('click', () => {
     modalOverlay.classList.remove('aberto');
-  });
-  modalOverlay.addEventListener('click', (e) => {
-    if (e.target === modalOverlay) modalOverlay.classList.remove('aberto');
   });
 
   document.getElementById('btn-imprimir').addEventListener('click', () => {
