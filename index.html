@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Formulário de Admissão — Escritório Contábil Betel</title>
+<title>Cadastro Geral do Funcionário</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -151,11 +151,19 @@
 
   @media print{
     body *{visibility:hidden;}
-    #modal-overlay, #modal-overlay *{visibility:visible;}
-    #modal-overlay{position:absolute;top:0;left:0;width:100%;background:#fff;padding:0;display:block;}
-    .modal-box{box-shadow:none;max-width:100%;margin:0;padding:10px;}
-    .modal-close,.modal-actions,.modal-title,.modal-sub{display:none !important;}
+    #recibo-imprimir, #recibo-imprimir *{visibility:visible;}
+    #recibo-imprimir{position:fixed;top:0;left:0;width:100%;}
   }
+
+  .btn-whatsapp{
+    display:inline-flex;align-items:center;gap:8px;
+    background:#25D366;color:#fff;
+    font-family:'Fraunces',serif;font-weight:600;font-size:15px;
+    border:none;padding:12px 22px;border-radius:4px;cursor:pointer;
+    text-decoration:none;letter-spacing:.02em;
+    transition:background .15s ease;
+  }
+  .btn-whatsapp:hover{background:#128C7E;}
 </style>
 </head>
 <body>
@@ -163,7 +171,7 @@
 
   <div class="masthead">
     <div>
-      <h1>Formulário de Admissão</h1>
+      <h1>Cadastro Geral do Funcionário</h1>
       <div class="sub">Documentos &amp; Guia de Exame Médico</div>
     </div>
     <div class="stamp">RECEBIDO<br>ESCRITÓRIO&nbsp;BETEL</div>
@@ -426,6 +434,11 @@
       <button type="button" id="btn-imprimir">🖨️ Imprimir</button>
       <button type="button" class="btn-secondary" id="btn-pdf">⬇️ Salvar PDF</button>
     </div>
+    <div style="text-align:center;margin-top:14px;">
+      <a id="btn-whatsapp" href="#" target="_blank" class="btn-whatsapp">
+        📱 Entrar em contato pelo WhatsApp
+      </a>
+    </div>
   </div>
 </div>
 
@@ -543,6 +556,14 @@
     }
 
     window.__nomeFuncionarioAtual = (fields['Nome_Funcionario'] || 'funcionario').replace(/[^a-zA-Z0-9]+/g, '_');
+
+    const msgWa = encodeURIComponent(
+      (fields['Razao_Social'] || '') + ' - CNPJ: ' + (fields['CNPJ'] || '') +
+      ' - Funcionário: ' + (fields['Nome_Funcionario'] || '') +
+      ' - Cadastro Geral do Funcionário'
+    );
+    const btnWa = document.getElementById('btn-whatsapp');
+    if (btnWa) btnWa.href = 'https://wa.me/554432288785?text=' + msgWa;
   }
 
   const modalOverlay = document.getElementById('modal-overlay');
