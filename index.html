@@ -6,7 +6,6 @@
 <title>Cadastro Geral do Funcionário</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   :root{
     --paper:#F7F5EF;
@@ -449,7 +448,6 @@
 
     <div class="modal-actions">
       <button type="button" id="btn-imprimir">🖨️ Imprimir</button>
-      <button type="button" class="btn-secondary" id="btn-pdf">⬇️ Salvar PDF</button>
     </div>
     <div style="text-align:center;margin-top:14px;">
       <a id="btn-whatsapp" href="#" target="_blank" class="btn-whatsapp">
@@ -622,19 +620,7 @@
     window.print();
   });
 
-  document.getElementById('btn-pdf').addEventListener('click', () => {
-    const elemento = document.getElementById('recibo-imprimir');
-    const nome = 'Guia_Admissao_' + (window.__nomeFuncionarioAtual || 'funcionario') + '.pdf';
-    html2pdf().set({
-      margin: 8,
-      filename: nome,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }).from(elemento).save();
-  });
-
-  form.addEventListener('submit', async function (e) {
+form.addEventListener('submit', async function (e) {
     e.preventDefault();
     statusEl.textContent = '';
     statusEl.className = '';
