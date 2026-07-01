@@ -6,6 +6,7 @@
 <title>Formulário de Admissão — Escritório Contábil Betel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   :root{
     --paper:#F7F5EF;
@@ -96,6 +97,56 @@
   #status.err{color:var(--err);}
 
   .req{color:var(--brass-dark);}
+
+  /* ===== MODAL ===== */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(27,42,65,0.78);
+    display:none;align-items:flex-start;justify-content:center;
+    z-index:1000;padding:30px 16px;overflow-y:auto;
+  }
+  .modal-overlay.aberto{display:flex;}
+  .modal-box{
+    background:#fff;max-width:640px;width:100%;border-radius:8px;
+    padding:30px 26px;position:relative;box-shadow:0 25px 70px rgba(0,0,0,.4);
+    margin:auto;
+  }
+  .modal-close{
+    position:absolute;top:12px;right:14px;background:none;border:none;
+    font-size:26px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:4px 10px;
+  }
+  .modal-close:hover{color:var(--err);background:none;}
+  .modal-title{font-family:'Fraunces',serif;font-weight:600;font-size:21px;margin:4px 0 4px;text-align:center;color:var(--ok);}
+  .modal-sub{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-soft);margin-bottom:20px;}
+  .modal-actions{display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap;}
+  .modal-actions button{padding:12px 22px;font-size:14px;}
+  .btn-secondary{background:#fff !important;color:var(--ink) !important;border:1.5px solid var(--ink) !important;}
+  .btn-secondary:hover{background:var(--paper-2) !important;}
+
+  /* ===== RECIBO (réplica do formulário oficial) ===== */
+  #recibo-wrap{border:2px solid #000;padding:0;overflow-x:auto;}
+  .recibo-table{width:100%;min-width:520px;border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#111;background:#fff;}
+  .recibo-table td{border:1px solid #000;padding:4px 6px;vertical-align:top;}
+  .clinica-nome{font-family:Georgia,'Times New Roman',serif;font-style:italic;font-weight:700;font-size:16px;color:#1a6b2e;}
+  .clinica-sub{font-family:Georgia,'Times New Roman',serif;font-style:italic;font-weight:700;font-size:10px;color:#1a6b2e;}
+  .cell-section{text-align:center;font-weight:700;}
+  .cell-red{color:#c0272d;font-weight:700;}
+  .cell-black{color:#111;font-weight:700;}
+  .valor{color:#111;font-weight:400;}
+  .valor-azul{color:#1a3fae;font-weight:400;}
+  .cell-check{font-weight:700;font-size:10.5px;}
+  .cell-check.marcado{background:#ffe97a;color:#c0272d;}
+  .box{display:inline-block;width:13px;font-weight:700;}
+  .cell-plain{font-weight:400;font-size:11px;}
+  .assinatura{text-align:right;font-size:10px;}
+  .recibo-obs{border-top:none;font-size:10.5px;color:#333;padding:6px;}
+
+  @media print{
+    body *{visibility:hidden;}
+    #modal-overlay, #modal-overlay *{visibility:visible;}
+    #modal-overlay{position:absolute;top:0;left:0;width:100%;background:#fff;padding:0;display:block;}
+    .modal-box{box-shadow:none;max-width:100%;margin:0;padding:10px;}
+    .modal-close,.modal-actions,.modal-title,.modal-sub{display:none !important;}
+  }
 </style>
 </head>
 <body>
@@ -279,6 +330,95 @@
   </form>
 </div>
 
+<!-- ===== MODAL DE CONFIRMAÇÃO / RECIBO ===== -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+    <button type="button" class="modal-close" id="modal-close" aria-label="Fechar">&times;</button>
+    <div class="modal-title">✓ Enviado com sucesso</div>
+    <div class="modal-sub">O Escritório Betel recebeu os dados. Confira o resumo abaixo.</div>
+
+    <div id="recibo-imprimir">
+      <div id="recibo-wrap">
+        <table class="recibo-table">
+          <tr>
+            <td colspan="2" style="width:60%;">
+              <div class="clinica-nome">Nome da empresa Contratada</div>
+              <div class="clinica-sub">(Medicina e Segurança do Trabalho)</div>
+            </td>
+            <td colspan="2">
+              <div><b>FONE/FAX:</b> (44)________ / (44)________</div>
+              <div><b>E-MAIL:</b> ________________________</div>
+            </td>
+          </tr>
+          <tr><td colspan="4" class="cell-black">Endereço: ________________________________________</td></tr>
+          <tr><td colspan="4" class="cell-section">DADOS DA EMPRESA</td></tr>
+          <tr><td colspan="4" class="cell-red">RAZÃO SOCIAL: <span class="valor" id="r-razao"></span></td></tr>
+          <tr>
+            <td colspan="2" class="cell-red">CNPJ: <span class="valor" id="r-cnpj"></span></td>
+            <td colspan="2" class="cell-black">TEL.: <span class="valor" id="r-tel-empresa"></span></td>
+          </tr>
+          <tr>
+            <td colspan="2" class="cell-red">ESC. CONTÁBIL: <span class="valor">JULIO CEZAR LOPES – Escritório Contábil Betel</span></td>
+            <td colspan="2" class="cell-black">TEL.: <span class="valor-azul">44/3228-8785</span></td>
+          </tr>
+          <tr><td colspan="4" class="cell-section">DADOS DO FUNCIONÁRIO</td></tr>
+          <tr><td colspan="4" class="cell-red">ENCAMINHO O FUNCIONÁRIO: <span class="valor" id="r-func-nome"></span></td></tr>
+          <tr>
+            <td class="cell-red">RG: <span class="valor" id="r-rg"></span></td>
+            <td class="cell-red">CPF: <span class="valor" id="r-cpf"></span></td>
+            <td colspan="2" class="cell-red">DT. NASC: <span class="valor" id="r-dtnasc"></span></td>
+          </tr>
+          <tr>
+            <td colspan="2" class="cell-red">FUNÇÃO: <span class="valor" id="r-funcao"></span></td>
+            <td colspan="2" class="cell-black">SETOR: <span class="valor" id="r-setor"></span></td>
+          </tr>
+          <tr><td colspan="4" class="cell-black">PARA EXAME:</td></tr>
+          <tr>
+            <td class="cell-check" id="chk-pre"><span class="box">☐</span> PRÉ-ADMISSIONAL</td>
+            <td class="cell-check" id="chk-per"><span class="box">☐</span> PERIÓDICO</td>
+            <td colspan="2" class="cell-check" id="chk-dem"><span class="box">☐</span> DEMISSIONAL</td>
+          </tr>
+          <tr>
+            <td colspan="2" class="cell-check" id="chk-mud"><span class="box">☐</span> MUDANÇA DE FUNÇÃO</td>
+            <td colspan="2" class="cell-check" id="chk-ret"><span class="box">☐</span> RETORNO AO TRABALHO (Trazer o Atestado)</td>
+          </tr>
+          <tr>
+            <td class="cell-check" id="chk-mod1"><span class="box">☐</span> Somente Clínico</td>
+            <td class="cell-check" id="chk-mod2"><span class="box">☐</span> Clínico + Exames Complementares</td>
+            <td colspan="2" class="cell-check" id="chk-mod3"><span class="box">☐</span> Somente Exames Complementares</td>
+          </tr>
+          <tr><td colspan="4" class="cell-black">EXAMES COMPLEMENTARES:</td></tr>
+          <tr>
+            <td class="cell-check" id="chk-audio"><span class="box">☐</span> AUDIOMETRIA</td>
+            <td class="cell-check" id="chk-hemo"><span class="box">☐</span> HEMOGRAMA</td>
+            <td colspan="2" class="cell-check" id="chk-outros"><span class="box">☐</span> OUTROS: <span class="valor" id="r-outros"></span></td>
+          </tr>
+          <tr>
+            <td class="cell-check" id="chk-acuidade"><span class="box">☐</span> ACUIDADE VISUAL</td>
+            <td class="cell-check" id="chk-gamagt"><span class="box">☐</span> GAMA GT</td>
+            <td colspan="2"></td>
+          </tr>
+          <tr>
+            <td colspan="2" class="cell-plain">DATA: <span class="valor" id="r-data"></span></td>
+            <td colspan="2" class="cell-plain assinatura">Assinatura e Carimbo da Empresa<br>ou Nome do Responsável<br><b><span id="r-responsavel"></span></b></td>
+          </tr>
+          <tr>
+            <td colspan="4" class="cell-plain">AGENDADO PARA O DIA: ____ / ____ / ________ &nbsp;&nbsp;&nbsp;&nbsp; HORA: ____ : ____</td>
+          </tr>
+        </table>
+        <div class="recibo-obs" id="recibo-obs-wrap" style="display:none;">
+          <b>Observações:</b> <span id="r-obs"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" id="btn-imprimir">🖨️ Imprimir</button>
+      <button type="button" class="btn-secondary" id="btn-pdf">⬇️ Salvar PDF</button>
+    </div>
+  </div>
+</div>
+
 <script>
   // ================= CONFIGURAÇÃO =================
   // Cole aqui a URL do seu Web App do Google Apps Script (termina em /exec)
@@ -337,6 +477,88 @@
     return fields;
   }
 
+  function formatarData(iso) {
+    if (!iso) return '____/____/________';
+    const p = iso.split('-');
+    if (p.length !== 3) return iso;
+    return p[2] + '/' + p[1] + '/' + p[0];
+  }
+
+  function marcar(id, condicao) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (condicao) {
+      el.classList.add('marcado');
+      const box = el.querySelector('.box');
+      if (box) box.textContent = '☒';
+    }
+  }
+
+  function preencherRecibo(fields) {
+    document.getElementById('r-razao').textContent = fields['Razao_Social'] || '';
+    document.getElementById('r-cnpj').textContent = fields['CNPJ'] || '';
+    document.getElementById('r-tel-empresa').textContent = fields['Telefone_Empresa'] || '';
+    document.getElementById('r-func-nome').textContent = fields['Nome_Funcionario'] || '';
+    document.getElementById('r-rg').textContent = fields['RG'] || '';
+    document.getElementById('r-cpf').textContent = fields['CPF'] || '';
+    document.getElementById('r-dtnasc').textContent = formatarData(fields['Data_Nascimento']);
+    document.getElementById('r-funcao').textContent = fields['Funcao'] || '';
+    document.getElementById('r-setor').textContent = fields['Setor'] || '';
+    document.getElementById('r-outros').textContent = fields['Comp_Outros'] || '';
+    document.getElementById('r-data').textContent = formatarData(fields['Data_Preenchimento']);
+    document.getElementById('r-responsavel').textContent = fields['Responsavel_Nome'] || '';
+
+    marcar('chk-pre', fields['Ex_Pre_Admissional'] === 'Sim');
+    marcar('chk-per', fields['Ex_Periodico'] === 'Sim');
+    marcar('chk-dem', fields['Ex_Demissional'] === 'Sim');
+    marcar('chk-mud', fields['Ex_Mudanca_Funcao'] === 'Sim');
+    marcar('chk-ret', fields['Ex_Retorno'] === 'Sim');
+
+    marcar('chk-mod1', fields['Modalidade'] === 'Somente Clinico');
+    marcar('chk-mod2', fields['Modalidade'] === 'Clinico + Exames Complementares');
+    marcar('chk-mod3', fields['Modalidade'] === 'Somente Exames Complementares');
+
+    marcar('chk-audio', fields['Comp_Audiometria'] === 'Sim');
+    marcar('chk-hemo', fields['Comp_Hemograma'] === 'Sim');
+    marcar('chk-acuidade', fields['Comp_Acuidade_Visual'] === 'Sim');
+    marcar('chk-gamagt', fields['Comp_Gama_GT'] === 'Sim');
+    marcar('chk-outros', !!fields['Comp_Outros']);
+
+    const obsWrap = document.getElementById('recibo-obs-wrap');
+    if (fields['Observacoes']) {
+      document.getElementById('r-obs').textContent = fields['Observacoes'];
+      obsWrap.style.display = 'block';
+    } else {
+      obsWrap.style.display = 'none';
+    }
+
+    window.__nomeFuncionarioAtual = (fields['Nome_Funcionario'] || 'funcionario').replace(/[^a-zA-Z0-9]+/g, '_');
+  }
+
+  const modalOverlay = document.getElementById('modal-overlay');
+  document.getElementById('modal-close').addEventListener('click', () => {
+    modalOverlay.classList.remove('aberto');
+  });
+  modalOverlay.addEventListener('click', (e) => {
+    if (e.target === modalOverlay) modalOverlay.classList.remove('aberto');
+  });
+
+  document.getElementById('btn-imprimir').addEventListener('click', () => {
+    window.print();
+  });
+
+  document.getElementById('btn-pdf').addEventListener('click', () => {
+    const elemento = document.getElementById('recibo-imprimir');
+    const nome = 'Guia_Admissao_' + (window.__nomeFuncionarioAtual || 'funcionario') + '.pdf';
+    html2pdf().set({
+      margin: 8,
+      filename: nome,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }).from(elemento).save();
+  });
+
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
     statusEl.textContent = '';
@@ -370,6 +592,8 @@
       if (result.status === 'ok') {
         statusEl.textContent = 'Enviado com sucesso! O Escritório Betel recebeu os dados.';
         statusEl.className = 'ok';
+        preencherRecibo(fields);
+        modalOverlay.classList.add('aberto');
         form.reset();
         if (dtInput) dtInput.value = new Date().toISOString().split('T')[0];
       } else {
