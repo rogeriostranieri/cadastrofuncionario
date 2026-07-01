@@ -236,8 +236,15 @@
           <input type="text" name="Setor">
         </div>
         <div class="field">
-          <label>Salário</label>
-          <input type="text" name="Salario" placeholder="R$">
+          <label>Salário <small style="font-weight:400;color:var(--ink-soft);font-size:11px;">(opcional)</small></label>
+          <input type="text" name="Salario" id="campo_salario" placeholder="R$ 0,00">
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;white-space:nowrap;">
+              <input type="checkbox" id="salario_nao_sei" style="width:14px;height:14px;flex-shrink:0;accent-color:var(--brass-dark);">
+              Não sei
+            </label>
+            <a id="btn-wa-salario" href="#" target="_blank" class="btn-whatsapp" style="display:none;font-size:12px;padding:6px 12px;">📱 Perguntar</a>
+          </div>
         </div>
       </div>
 
@@ -691,18 +698,22 @@
   // ===== ENVIO E CONTROLE DE DUPLICATA =====
 
   async function enviarPayload(forcarReenvio) {
-    const response = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({
-        chave:    CHAVE_SECRETA,
-        fields:   _ultimoPayload.fields,
-        emailHtml:_ultimoPayload.emailHtml,
-        files:    _ultimoPayload.files,
-        reenvio:  !!forcarReenvio
-      })
+    const body = JSON.stringify({
+      chave:     CHAVE_SECRETA,
+      fields:    _ultimoPayload.fields,
+      emailHtml: _ultimoPayload.emailHtml,
+      files:     _ultimoPayload.files,
+      reenvio:   !!forcarReenvio
     });
-    return response.json();
+    const opts = { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body };
+    try {
+      const response = await fetch(APPS_SCRIPT_URL, opts);
+      return await response.json();
+    } catch (_) {
+      // Redirect CORS do Google Apps Script — reenvia sem ler resposta
+      await fetch(APPS_SCRIPT_URL, Object.assign({}, opts, { mode: 'no-cors' }));
+      return { status: 'ok' };
+    }
   }
 
   function concluirEnvio() {
@@ -802,6 +813,64 @@
   mascaraCPF(document.querySelector('[name=CPF]'));
   mascaraCNPJ(document.querySelector('[name=CNPJ]'));
   mascaraTelefone(document.querySelector('[name=Telefone_Empresa]'));
+
+  // ===== SALÁRIO: MÁSCARA + CHECKBOX + WHATSAPP =====
+  function mascaraSalario(el) {
+    el.addEventListener('input', function () {
+      const digits = this.value.replace(/\D/g, '');
+      if (!digits) { this.value = ''; return; }
+      const num   = parseInt(digits, 10);
+      const cents = num % 100;
+      const reais = Math.floor(num / 100);
+      this.value = 'R$ ' + reais.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + String(cents).padStart(2, '0');
+    });
+  }
+
+  const campoSalario = document.getElementById('campo_salario');
+  const chkNaoSei    = document.getElementById('salario_nao_sei');
+  const btnWaSalario = document.getElementById('btn-wa-salario');
+
+  mascaraSalario(campoSalario);
+
+  function atualizarLinkWaSalario() {
+    const empresa = (document.querySelector('[name=Razao_Social]').value     || '').trim();
+    const nome    = (document.querySelector('[name=Nome_Funcionario]').value  || '').trim();
+    const cargo   = (document.querySelector('[name=Funcao]').value            || '').trim();
+    const msg = encodeURIComponent(
+      (empresa ? empresa + ' - '           : '') +
+      (nome    ? 'Funcionário: ' + nome + ' - ' : '') +
+      (cargo   ? 'Cargo: ' + cargo + ' - '      : '') +
+      'Dúvida a respeito do salário'
+    );
+    btnWaSalario.href = 'https://wa.me/554432288785?text=' + msg;
+  }
+
+  chkNaoSei.addEventListener('change', function () {
+    if (this.checked) {
+      campoSalario.value    = 'A confirmar';
+      campoSalario.disabled = true;
+      atualizarLinkWaSalario();
+      btnWaSalario.style.display = 'inline-flex';
+    } else {
+      campoSalario.disabled = false;
+      campoSalario.value    = '';
+      btnWaSalario.style.display = 'none';
+    }
+  });
+
+  ['Razao_Social', 'Nome_Funcionario', 'Funcao'].forEach(function (n) {
+    const el = document.querySelector('[name=' + n + ']');
+    if (el) el.addEventListener('input', function () {
+      if (chkNaoSei.checked) atualizarLinkWaSalario();
+    });
+  });
+
+  // reset visual após envio bem-sucedido
+  form.addEventListener('reset', function () {
+    campoSalario.disabled      = false;
+    campoSalario.value         = '';
+    btnWaSalario.style.display = 'none';
+  });
 
   // ===== DATA / HORA BR =====
   function isoParaBR(iso) {
