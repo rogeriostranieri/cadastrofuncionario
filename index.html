@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Formulário de Admissão — Escritório Contábil Betel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F7F5EF;
+    --paper-2:#FBFAF6;
+    --ink:#1B2A41;
+    --ink-soft:#48566B;
+    --brass:#B8873A;
+    --brass-dark:#8F6526;
+    --line:#DAD3C2;
+    --ok:#4C6B4F;
+    --err:#A6432F;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    background-image:radial-gradient(circle at 1px 1px, rgba(27,42,65,0.05) 1px, transparent 0);
+    background-size:22px 22px;
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    line-height:1.5;
+    padding:40px 16px 80px;
+  }
+  .wrap{max-width:760px;margin:0 auto;}
+
+  .masthead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid var(--ink);padding-bottom:18px;margin-bottom:6px;}
+  .masthead h1{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(24px,4vw,34px);margin:0;letter-spacing:-0.01em;}
+  .masthead .sub{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em;margin-top:6px;}
+  .stamp{font-family:'IBM Plex Mono',monospace;font-size:11px;text-align:right;color:var(--brass-dark);border:1.5px solid var(--brass);border-radius:3px;padding:6px 10px;transform:rotate(-2deg);white-space:nowrap;}
+
+  .escritorio{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-soft);margin:14px 0 20px;padding:10px 14px;background:var(--paper-2);border-left:3px solid var(--brass);}
+  .escritorio b{color:var(--ink);}
+
+  .aviso{font-size:12.5px;color:var(--brass-dark);background:#FBF3E4;border:1px solid var(--brass);border-radius:4px;padding:10px 14px;margin-bottom:28px;}
+
+  .folha{background:var(--paper-2);border:1px solid var(--line);border-radius:2px;padding:30px clamp(18px,4vw,36px);margin-bottom:28px;position:relative;}
+  .folha::before{content:attr(data-fl);position:absolute;top:-11px;left:24px;background:var(--ink);color:var(--paper);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;padding:3px 10px;border-radius:2px;}
+  .folha h2{font-family:'Fraunces',serif;font-weight:600;font-size:19px;margin:6px 0 20px;padding-bottom:10px;border-bottom:1px solid var(--line);}
+  .folha h3{font-family:'Fraunces',serif;font-weight:600;font-size:15px;margin:26px 0 12px;color:var(--ink-soft);}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .grid.g3{grid-template-columns:1fr 1fr 1fr;}
+  @media (max-width:560px){.grid,.grid.g3{grid-template-columns:1fr;}}
+
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);margin-bottom:5px;}
+  .field{margin-bottom:16px;}
+  input[type=text],input[type=date],input[type=number],input[type=email],input[type=tel],textarea,select{
+    width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:4px;background:#fff;
+    font-family:'Inter',sans-serif;font-size:14px;color:var(--ink);
+  }
+  input[type=file]{
+    width:100%;padding:9px 10px;border:1px dashed var(--line);border-radius:4px;background:#fff;
+    font-family:'Inter',sans-serif;font-size:13px;color:var(--ink-soft);
+  }
+  input:focus,textarea:focus,select:focus{outline:2px solid var(--brass);outline-offset:1px;border-color:var(--brass);}
+  textarea{resize:vertical;min-height:64px;}
+
+  fieldset{border:none;padding:0;margin:0 0 16px;}
+  .check-row{display:flex;align-items:flex-start;gap:9px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13.5px;}
+  .check-row:last-child{border-bottom:none;}
+  .check-row input[type=checkbox]{width:16px;height:16px;margin-top:2px;flex-shrink:0;accent-color:var(--brass-dark);}
+  .check-row .txt b{color:var(--ink);}
+
+  .doc-row{display:grid;grid-template-columns:1fr 1.2fr;gap:14px;align-items:center;padding:12px 0;border-bottom:1px dashed var(--line);}
+  .doc-row:last-child{border-bottom:none;}
+  .doc-row .txt{font-size:13.5px;}
+  .doc-row .txt small{display:block;color:var(--ink-soft);font-size:11.5px;margin-top:2px;}
+  @media (max-width:560px){.doc-row{grid-template-columns:1fr;}}
+
+  .radio-group{display:flex;flex-direction:column;gap:8px;}
+  .radio-row{display:flex;align-items:center;gap:9px;font-size:13.5px;}
+  .radio-row input{width:16px;height:16px;accent-color:var(--brass-dark);}
+
+  .checklist-doc{font-size:13px;color:var(--ink-soft);margin-top:-4px;margin-bottom:14px;}
+
+  .submit-bar{display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:8px;}
+  button{
+    font-family:'Fraunces',serif;font-weight:600;font-size:16px;background:var(--ink);color:var(--paper);
+    border:none;padding:14px 38px;border-radius:4px;cursor:pointer;letter-spacing:.02em;
+    transition:background .15s ease, transform .1s ease;
+  }
+  button:hover{background:var(--brass-dark);}
+  button:active{transform:scale(.98);}
+
+  .req{color:var(--brass-dark);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <div>
+      <h1>Formulário de Admissão</h1>
+      <div class="sub">Documentos &amp; Guia de Exame Médico</div>
+    </div>
+    <div class="stamp">RECEBIDO<br>ESCRITÓRIO&nbsp;BETEL</div>
+  </div>
+
+  <div class="escritorio">
+    <b>Escritório Contábil:</b> Julio Cezar Lopes — Escritório Contábil Betel &nbsp;·&nbsp; <b>Tel.:</b> 44 3228-8785
+  </div>
+
+  <div class="aviso">
+    Anexe os documentos escaneados ou fotografados. Some de todos os arquivos: até <b>10MB no total</b> por envio.
+  </div>
+
+  <!--
+    Envios chegam em: legalizacaobetel@gmail.com
+    No primeiro envio de teste, o FormSubmit manda um e-mail de confirmação pra esse endereço:
+    é preciso clicar no link de ativação antes do formulário passar a funcionar de fato.
+  -->
+  <form id="admissao-form" action="https://formsubmit.co/legalizacaobetel@gmail.com" method="POST" enctype="multipart/form-data">
+
+    <!-- Configurações do FormSubmit -->
+    <input type="hidden" name="_subject" value="Nova admissão">
+    <input type="hidden" name="_template" value="table">
+    <input type="hidden" name="_captcha" value="true">
+    <input type="text" name="_honey" style="display:none">
+
+    <!-- ===== FL 01/02 ===== -->
+    <div class="folha" data-fl="FL. 01/02">
+      <h2>Dados da Empresa e do Funcionário</h2>
+
+      <h3>Empresa contratante</h3>
+      <div class="grid">
+        <div class="field">
+          <label>Razão Social <span class="req">*</span></label>
+          <input type="text" name="Razao_Social" required>
+        </div>
+        <div class="field">
+          <label>CNPJ <span class="req">*</span></label>
+          <input type="text" name="CNPJ" required placeholder="00.000.000/0000-00">
+        </div>
+      </div>
+      <div class="field">
+        <label>Telefone da empresa</label>
+        <input type="tel" name="Telefone_Empresa" placeholder="(44) 00000-0000">
+      </div>
+
+      <h3>Funcionário</h3>
+      <div class="field">
+        <label>Nome completo <span class="req">*</span></label>
+        <input type="text" name="Nome_Funcionario" required>
+      </div>
+      <div class="grid g3">
+        <div class="field">
+          <label>RG</label>
+          <input type="text" name="RG">
+        </div>
+        <div class="field">
+          <label>CPF <span class="req">*</span></label>
+          <input type="text" name="CPF" required placeholder="000.000.000-00">
+        </div>
+        <div class="field">
+          <label>Data de nascimento</label>
+          <input type="date" name="Data_Nascimento">
+        </div>
+      </div>
+      <div class="grid g3">
+        <div class="field">
+          <label>Função <span class="req">*</span></label>
+          <input type="text" name="Funcao" required>
+        </div>
+        <div class="field">
+          <label>Setor</label>
+          <input type="text" name="Setor">
+        </div>
+        <div class="field">
+          <label>Salário</label>
+          <input type="text" name="Salario" placeholder="R$">
+        </div>
+      </div>
+
+      <h3>Documentos (anexar cópia digitalizada)</h3>
+      <p class="checklist-doc">Foto do celular ou PDF escaneado servem. Campos sem asterisco são opcionais nesse envio, mas idealmente devem ser enviados.</p>
+
+      <div class="doc-row">
+        <div class="txt"><b>Carteira Profissional (CTPS)</b></div>
+        <input type="file" name="Anexo_CTPS" accept="image/*,.pdf">
+      </div>
+      <div class="doc-row">
+        <div class="txt"><b>Identidade (RG)</b><small>constando nome do pai, nome da mãe, data de nascimento, cidade/estado</small></div>
+        <input type="file" name="Anexo_RG" accept="image/*,.pdf">
+      </div>
+      <div class="doc-row">
+        <div class="txt"><b>CPF</b></div>
+        <input type="file" name="Anexo_CPF" accept="image/*,.pdf">
+      </div>
+      <div class="doc-row">
+        <div class="txt"><b>Comprovante de residência</b></div>
+        <input type="file" name="Anexo_Comprovante_Residencia" accept="image/*,.pdf">
+      </div>
+      <div class="doc-row">
+        <div class="txt"><b>Título de Eleitor</b></div>
+        <input type="file" name="Anexo_Titulo_Eleitor" accept="image/*,.pdf">
+      </div>
+      <div class="doc-row">
+        <div class="txt"><b>Foto 3x4</b></div>
+        <input type="file" name="Anexo_Foto_3x4" accept="image/*">
+      </div>
+      <div class="doc-row">
+        <div class="txt"><b>Documentos de dependentes</b><small>CPF + certidão nascimento/casamento; carteira de vacinação se até 14 anos</small></div>
+        <input type="file" name="Anexo_Dependentes" accept="image/*,.pdf" multiple>
+      </div>
+
+      <h3>Outras confirmações</h3>
+      <fieldset>
+        <label class="check-row"><input type="checkbox" name="Telefone_Informado" value="Sim"><span class="txt">Número de telefone informado</span></label>
+        <label class="check-row"><input type="checkbox" name="Grau_Instrucao_Informado" value="Sim"><span class="txt">Grau de instrução informado</span></label>
+        <label class="check-row"><input type="checkbox" name="Exame_Admissional_Realizado" value="Sim"><span class="txt">Exame admissional realizado</span></label>
+      </fieldset>
+      <p class="checklist-doc">Lembrete: a admissão precisa ser validada no e-Social até o dia anterior ao início das atividades (Portaria MTP nº 4.370/2022, Art. 18, I).</p>
+    </div>
+
+    <!-- ===== FL 02/02 ===== -->
+    <div class="folha" data-fl="FL. 02/02">
+      <h2>Guia de Exame Médico</h2>
+
+      <h3>Tipo de exame</h3>
+      <fieldset>
+        <label class="check-row"><input type="checkbox" name="Ex_Pre_Admissional" value="Sim"><span class="txt">Pré-admissional</span></label>
+        <label class="check-row"><input type="checkbox" name="Ex_Periodico" value="Sim"><span class="txt">Periódico</span></label>
+        <label class="check-row"><input type="checkbox" name="Ex_Demissional" value="Sim"><span class="txt">Demissional</span></label>
+        <label class="check-row"><input type="checkbox" name="Ex_Mudanca_Funcao" value="Sim"><span class="txt">Mudança de função</span></label>
+        <label class="check-row"><input type="checkbox" name="Ex_Retorno" value="Sim"><span class="txt">Retorno ao trabalho (trazer o atestado)</span></label>
+      </fieldset>
+
+      <h3>Modalidade</h3>
+      <div class="radio-group">
+        <label class="radio-row"><input type="radio" name="Modalidade" value="Somente Clinico"> Somente Clínico</label>
+        <label class="radio-row"><input type="radio" name="Modalidade" value="Clinico + Exames Complementares"> Clínico + Exames Complementares</label>
+        <label class="radio-row"><input type="radio" name="Modalidade" value="Somente Exames Complementares"> Somente Exames Complementares</label>
+      </div>
+
+      <h3>Exames complementares</h3>
+      <fieldset>
+        <label class="check-row"><input type="checkbox" name="Comp_Audiometria" value="Sim"><span class="txt">Audiometria</span></label>
+        <label class="check-row"><input type="checkbox" name="Comp_Hemograma" value="Sim"><span class="txt">Hemograma</span></label>
+        <label class="check-row"><input type="checkbox" name="Comp_Acuidade_Visual" value="Sim"><span class="txt">Acuidade Visual</span></label>
+        <label class="check-row"><input type="checkbox" name="Comp_Gama_GT" value="Sim"><span class="txt">Gama GT</span></label>
+      </fieldset>
+      <div class="field">
+        <label>Outros exames</label>
+        <input type="text" name="Comp_Outros">
+      </div>
+
+      <div class="field">
+        <label>Observações</label>
+        <textarea name="Observacoes"></textarea>
+      </div>
+    </div>
+
+    <!-- ===== RESPONSÁVEL ===== -->
+    <div class="folha" data-fl="ENVIO">
+      <h2>Responsável pelo preenchimento</h2>
+      <div class="grid">
+        <div class="field">
+          <label>Nome do responsável <span class="req">*</span></label>
+          <input type="text" name="Responsavel_Nome" required>
+        </div>
+        <div class="field">
+          <label>E-mail para contato</label>
+          <input type="email" name="Responsavel_Email">
+        </div>
+      </div>
+      <div class="field">
+        <label>Data de preenchimento</label>
+        <input type="date" name="Data_Preenchimento" id="data_preenchimento">
+      </div>
+
+      <div class="submit-bar">
+        <button type="submit">Enviar para o Escritório Betel</button>
+      </div>
+    </div>
+
+  </form>
+</div>
+
+<script>
+  const dtInput = document.getElementById('data_preenchimento');
+  if (dtInput) dtInput.value = new Date().toISOString().split('T')[0];
+
+  document.getElementById('admissao-form').addEventListener('submit', function(){
+    const razao = this.querySelector('[name="Razao_Social"]').value || 'Empresa';
+    const func = this.querySelector('[name="Nome_Funcionario"]').value || 'Funcionário';
+    this.querySelector('[name="_subject"]').value = 'Admissao - ' + razao + ' - ' + func;
+  });
+</script>
+</body>
+</html>
