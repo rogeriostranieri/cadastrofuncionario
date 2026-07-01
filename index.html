@@ -283,6 +283,7 @@
   // ================= CONFIGURAÇÃO =================
   // Cole aqui a URL do seu Web App do Google Apps Script (termina em /exec)
   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwn9c5W3kdgycVNFJ4gl03TmfJvDrMWOvzQftHV8t78OS_h6XveC-MBZkSTEA4OH4w/exec";
+  const CHAVE_SECRETA = "betel-2026-admissao"; // precisa ser IGUAL à do Code.gs
   // ==================================================
 
   const dtInput = document.getElementById('data_preenchimento');
@@ -361,7 +362,7 @@
       const response = await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ fields, files })
+        body: JSON.stringify({ chave: CHAVE_SECRETA, fields, files })
       });
 
       const result = await response.json();
