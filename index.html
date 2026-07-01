@@ -198,13 +198,13 @@
           <input type="text" name="Razao_Social" required>
         </div>
         <div class="field">
-          <label>CNPJ <span class="req">*</span></label>
-          <input type="text" name="CNPJ" required placeholder="00.000.000/0000-00">
+          <label>CNPJ <span class="req">*</span> <small style="font-weight:400;color:var(--ink-soft);font-size:11px;">(aceita letras e números — novo formato)</small></label>
+          <input type="text" name="CNPJ" required placeholder="00.000.000/0000-00" maxlength="18">
         </div>
       </div>
       <div class="field">
-        <label>Telefone da empresa</label>
-        <input type="tel" name="Telefone_Empresa" placeholder="(44) 00000-0000">
+        <label>Telefone da empresa <small style="font-weight:400;color:var(--ink-soft);font-size:11px;">(fixo ou celular)</small></label>
+        <input type="tel" name="Telefone_Empresa" placeholder="(44) 3228-8785 ou (44) 99999-9999" maxlength="15">
       </div>
 
       <h3>Funcionário</h3>
@@ -341,7 +341,17 @@
       <div class="submit-bar">
         <button type="submit" id="btn-enviar">Enviar para o Escritório Betel</button>
         <div id="status"></div>
+        <div id="dup-actions" style="display:none;gap:10px;justify-content:center;flex-wrap:wrap;">
+          <button type="button" id="btn-cancelar-dup" class="btn-secondary" style="font-size:14px;padding:10px 22px;">Cancelar</button>
+          <button type="button" id="btn-reenviar-dup" style="font-size:14px;padding:10px 22px;">✓ Reenviar como Correção</button>
+        </div>
       </div>
+    </div>
+
+    <!-- honeypot anti-bot: invisível para humanos, bots tendem a preencher -->
+    <div style="position:absolute;left:-9999px;height:0;overflow:hidden;" aria-hidden="true">
+      <label for="hp_campo">Não preencha este campo</label>
+      <input type="text" name="website" id="hp_campo" autocomplete="off" tabindex="-1">
     </div>
 
   </form>
@@ -445,8 +455,12 @@
 <script>
   // ================= CONFIGURAÇÃO =================
   // Cole aqui a URL do seu Web App do Google Apps Script (termina em /exec)
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwn9c5W3kdgycVNFJ4gl03TmfJvDrMWOvzQftHV8t78OS_h6XveC-MBZkSTEA4OH4w/exec";
-  const CHAVE_SECRETA = "betel-2026-admissao"; // precisa ser IGUAL à do Code.gs
+  // ⬇️ Substitua pela URL gerada após publicar o novo Code.gs no script.google.com
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzCwYgw0Z_CjfbJV5ov-jyKEhRa7zPPwSUZubSxge4X-3dXf67Fh_je9fTJRPzNRI5sDA/exec";
+  const CHAVE_SECRETA = "betel-2026-admissao"; // deve ser igual ao Code.gs
+  const FORM_INICIO = Date.now(); // usado para detectar envio automatizado
+  let _ultimoPayload  = null;    // salvo para possível reenvio
+  let _fieldsOriginal = null;
   // ==================================================
 
   const dtInput = document.getElementById('data_preenchimento');
@@ -466,19 +480,45 @@
   }
 
   async function collectFiles() {
+    const TIPOS_OK  = ['image/jpeg','image/png','image/gif','image/webp','image/bmp','image/tiff','application/pdf'];
+    const MAX_ARQ   = 8  * 1024 * 1024;  // 8 MB por arquivo
+    const MAX_TOTAL = 20 * 1024 * 1024;  // 20 MB total
     const fileInputs = form.querySelectorAll('input[type=file]');
     const files = [];
+    const ignorados = [];
+    let totalBytes = 0;
+
     for (const input of fileInputs) {
       for (const file of input.files) {
+        if (!TIPOS_OK.includes(file.type)) {
+          ignorados.push(file.name + ' (tipo inválido — use imagem ou PDF)');
+          continue;
+        }
+        if (file.size > MAX_ARQ) {
+          ignorados.push(file.name + ' (acima de 8 MB)');
+          continue;
+        }
+        if (totalBytes + file.size > MAX_TOTAL) {
+          ignorados.push(file.name + ' (total ultrapassa 20 MB)');
+          continue;
+        }
+        totalBytes += file.size;
         const base64 = await fileToBase64(file);
         files.push({
           fieldName: input.name,
           filename: file.name,
-          mimeType: file.type || 'application/octet-stream',
+          mimeType: file.type,
           base64: base64
         });
       }
     }
+
+    if (ignorados.length > 0) {
+      statusEl.textContent = 'Arquivos ignorados: ' + ignorados.join(' | ');
+      statusEl.className = 'err';
+      await new Promise(r => setTimeout(r, 2500));
+    }
+
     return files;
   }
 
@@ -592,6 +632,17 @@
     statusEl.textContent = '';
     statusEl.className = '';
 
+    // Anti-bot: honeypot preenchido = robô
+    const hp = document.getElementById('hp_campo');
+    if (hp && hp.value) return;
+
+    // Anti-bot: formulário enviado em menos de 5 segundos = suspeito
+    if (Date.now() - FORM_INICIO < 5000) {
+      statusEl.textContent = 'Envio muito rápido. Preencha o formulário com calma.';
+      statusEl.className = 'err';
+      return;
+    }
+
     if (APPS_SCRIPT_URL.indexOf('COLE_AQUI') !== -1) {
       statusEl.textContent = 'Configuração pendente: cole a URL do Apps Script no código.';
       statusEl.className = 'err';
@@ -606,24 +657,24 @@
     try {
       const fields = collectFields();
       const files = await collectFiles();
+      const fieldsEmail = Object.assign({}, fields, {
+        Data_Nascimento_BR: isoParaBR(fields['Data_Nascimento']),
+        Data_Preenchimento_BR: isoParaBR(fields['Data_Preenchimento']),
+        DataHoraEnvio: dataHoraBR()
+      });
+      const emailHtml = buildEmailHtml(fieldsEmail);
+
+      _fieldsOriginal = fields;
+      _ultimoPayload  = { fields: fieldsEmail, emailHtml, files };
 
       statusEl.textContent = 'Enviando para o Escritório Betel...';
 
-      const response = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ chave: CHAVE_SECRETA, fields, files })
-      });
-
-      const result = await response.json();
+      const result = await enviarPayload(false);
 
       if (result.status === 'ok') {
-        statusEl.textContent = 'Enviado com sucesso! O Escritório Betel recebeu os dados.';
-        statusEl.className = 'ok';
-        preencherRecibo(fields);
-        modalOverlay.classList.add('aberto');
-        form.reset();
-        if (dtInput) dtInput.value = new Date().toISOString().split('T')[0];
+        concluirEnvio();
+      } else if (result.status === 'duplicata') {
+        mostrarAvisoDuplicata(result);
       } else {
         throw new Error(result.message || 'Erro no envio');
       }
@@ -636,6 +687,239 @@
       btn.textContent = 'Enviar para o Escritório Betel';
     }
   });
+
+  // ===== ENVIO E CONTROLE DE DUPLICATA =====
+
+  async function enviarPayload(forcarReenvio) {
+    const response = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        chave:    CHAVE_SECRETA,
+        fields:   _ultimoPayload.fields,
+        emailHtml:_ultimoPayload.emailHtml,
+        files:    _ultimoPayload.files,
+        reenvio:  !!forcarReenvio
+      })
+    });
+    return response.json();
+  }
+
+  function concluirEnvio() {
+    document.getElementById('dup-actions').style.display = 'none';
+    statusEl.textContent = 'Enviado com sucesso! O Escritório Betel recebeu os dados.';
+    statusEl.className = 'ok';
+    preencherRecibo(_fieldsOriginal);
+    modalOverlay.classList.add('aberto');
+    form.reset();
+    if (dtInput) dtInput.value = new Date().toISOString().split('T')[0];
+  }
+
+  function mostrarAvisoDuplicata(result) {
+    const min  = result.minutosAtras || '?';
+    const nome = result.nome    ? '<strong>' + result.nome + '</strong>'   : 'este funcionário';
+    const emp  = result.empresa ? ' (' + result.empresa + ')'              : '';
+    statusEl.innerHTML =
+      '⚠️ ' + nome + emp + ' já foi enviado há ' + min + ' min.<br>'
+      + '<span style="font-size:12px;">Foi um erro? Clique em <strong>Reenviar como Correção</strong>.</span>';
+    statusEl.className = 'err';
+    document.getElementById('dup-actions').style.display = 'flex';
+  }
+
+  document.getElementById('btn-cancelar-dup').addEventListener('click', function() {
+    document.getElementById('dup-actions').style.display = 'none';
+    statusEl.textContent = '';
+    statusEl.className = '';
+  });
+
+  document.getElementById('btn-reenviar-dup').addEventListener('click', async function() {
+    document.getElementById('dup-actions').style.display = 'none';
+    statusEl.textContent = 'Reenviando como correção...';
+    statusEl.className = '';
+    btn.disabled = true;
+    btn.textContent = 'Reenviando...';
+    try {
+      _ultimoPayload.fields.DataHoraEnvio = dataHoraBR();
+      _ultimoPayload.emailHtml = buildEmailHtml(_ultimoPayload.fields);
+      const result = await enviarPayload(true);
+      if (result.status === 'ok') {
+        concluirEnvio();
+      } else {
+        statusEl.textContent = 'Erro ao reenviar: ' + (result.message || 'Tente novamente.');
+        statusEl.className = 'err';
+      }
+    } catch (err) {
+      statusEl.textContent = 'Erro ao reenviar: ' + err.message;
+      statusEl.className = 'err';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Enviar para o Escritório Betel';
+    }
+  });
+
+  // ===== MÁSCARAS =====
+  function mascaraCPF(el) {
+    el.addEventListener('input', function() {
+      const d = this.value.replace(/\D/g, '').slice(0, 11);
+      let r = '';
+      for (let i = 0; i < d.length; i++) {
+        if (i === 3 || i === 6) r += '.';
+        else if (i === 9) r += '-';
+        r += d[i];
+      }
+      this.value = r;
+    });
+  }
+
+  function mascaraCNPJ(el) {
+    el.addEventListener('input', function() {
+      const raw = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 14);
+      let r = '';
+      for (let i = 0; i < raw.length; i++) {
+        if (i === 2 || i === 5) r += '.';
+        else if (i === 8) r += '/';
+        else if (i === 12) r += '-';
+        r += raw[i];
+      }
+      this.value = r;
+    });
+  }
+
+  function mascaraTelefone(el) {
+    el.addEventListener('input', function() {
+      const d = this.value.replace(/\D/g, '').slice(0, 11);
+      if (!d) { this.value = ''; return; }
+      if (d.length <= 2) { this.value = '(' + d; return; }
+      const ddd = d.slice(0, 2);
+      const corpo = d.slice(2);
+      const is11 = d.length === 11;
+      const p1 = is11 ? corpo.slice(0, 5) : corpo.slice(0, 4);
+      const p2 = is11 ? corpo.slice(5) : corpo.slice(4);
+      this.value = '(' + ddd + ') ' + p1 + (p2 ? '-' + p2 : '');
+    });
+  }
+
+  mascaraCPF(document.querySelector('[name=CPF]'));
+  mascaraCNPJ(document.querySelector('[name=CNPJ]'));
+  mascaraTelefone(document.querySelector('[name=Telefone_Empresa]'));
+
+  // ===== DATA / HORA BR =====
+  function isoParaBR(iso) {
+    if (!iso) return '';
+    const p = iso.split('-');
+    return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
+  }
+
+  function dataHoraBR() {
+    const now = new Date();
+    const d = now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    const h = now.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
+    return d + ' às ' + h;
+  }
+
+  // ===== E-MAIL HTML =====
+  function buildEmailHtml(f) {
+    function esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    const v = (k) => esc(f[k]) || '—';
+
+    const badge = (k, label) => f[k] === 'Sim'
+      ? `<span style="display:inline-block;background:#D4EDDA;color:#155724;border-radius:4px;padding:5px 12px;font-size:12px;font-weight:700;margin:3px 4px 3px 0;">${label}</span>`
+      : '';
+
+    const exames = [
+      badge('Ex_Pre_Admissional','Pré-admissional'),
+      badge('Ex_Periodico','Periódico'),
+      badge('Ex_Demissional','Demissional'),
+      badge('Ex_Mudanca_Funcao','Mudança de Função'),
+      badge('Ex_Retorno','Retorno ao Trabalho'),
+    ].filter(Boolean).join('') || '<span style="color:#888;font-size:13px;">Nenhum selecionado</span>';
+
+    const comps = [
+      badge('Comp_Audiometria','Audiometria'),
+      badge('Comp_Hemograma','Hemograma'),
+      badge('Comp_Acuidade_Visual','Acuidade Visual'),
+      badge('Comp_Gama_GT','Gama GT'),
+      f['Comp_Outros'] ? `<span style="display:inline-block;background:#D4EDDA;color:#155724;border-radius:4px;padding:5px 12px;font-size:12px;font-weight:700;margin:3px 4px 3px 0;">Outros: ${esc(f['Comp_Outros'])}</span>` : '',
+    ].filter(Boolean).join('') || '<span style="color:#888;font-size:13px;">Nenhum selecionado</span>';
+
+    const linha = (label, val) =>
+      `<tr>
+        <td style="width:36%;padding:9px 13px;background:#F7F5EF;font-size:11px;font-weight:700;color:#48566B;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #DAD3C2;vertical-align:top;">${label}</td>
+        <td style="padding:9px 13px;font-size:14px;font-weight:700;color:#1B2A41;border-bottom:1px solid #DAD3C2;">${val}</td>
+      </tr>`;
+
+    const titulo = (icone, label) =>
+      `<div style="background:#1B2A41;color:#B8873A;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:9px 14px;">${icone} ${label}</div>`;
+
+    const obsBloco = f['Observacoes']
+      ? `${titulo('📝','Observações')}
+         <div style="padding:14px;border-left:1px solid #DAD3C2;border-right:1px solid #DAD3C2;border-bottom:1px solid #DAD3C2;font-size:13px;color:#1B2A41;">${esc(f['Observacoes'])}</div>`
+      : '';
+
+    const modalidade = f['Modalidade']
+      ? `<div style="margin-top:12px;font-size:11px;font-weight:700;color:#48566B;text-transform:uppercase;">Modalidade</div>
+         <div style="font-size:14px;font-weight:700;color:#1B2A41;margin-top:3px;">${esc(f['Modalidade'])}</div>`
+      : '';
+
+    return `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:24px 16px;background:#EDEAE3;font-family:Arial,Helvetica,sans-serif;">
+<div style="max-width:580px;margin:0 auto;">
+
+  <div style="background:#1B2A41;padding:26px 28px;border-radius:8px 8px 0 0;">
+    <div style="font-size:21px;font-weight:700;color:#fff;letter-spacing:-.01em;">Cadastro Geral do Funcionário</div>
+    <div style="font-size:12px;color:#B8C4D0;margin-top:5px;">Escritório Contábil Betel &nbsp;·&nbsp; ${esc(f['DataHoraEnvio'])}</div>
+  </div>
+
+  <div style="background:#fff;border-left:1px solid #DAD3C2;border-right:1px solid #DAD3C2;">
+
+    ${titulo('🏢','Empresa Contratante')}
+    <table style="width:100%;border-collapse:collapse;border-left:1px solid #DAD3C2;border-right:1px solid #DAD3C2;border-bottom:1px solid #DAD3C2;">
+      ${linha('Razão Social', v('Razao_Social'))}
+      ${linha('CNPJ', v('CNPJ'))}
+      ${linha('Telefone', v('Telefone_Empresa'))}
+    </table>
+
+    ${titulo('👤','Dados do Funcionário')}
+    <table style="width:100%;border-collapse:collapse;border-left:1px solid #DAD3C2;border-right:1px solid #DAD3C2;border-bottom:1px solid #DAD3C2;">
+      ${linha('Nome Completo', v('Nome_Funcionario'))}
+      ${linha('RG', v('RG'))}
+      ${linha('CPF', v('CPF'))}
+      ${linha('Data de Nascimento', v('Data_Nascimento_BR'))}
+      ${linha('Função', v('Funcao'))}
+      ${linha('Setor', v('Setor'))}
+      ${linha('Salário', v('Salario'))}
+    </table>
+
+    ${titulo('🏥','Tipo de Exame')}
+    <div style="padding:14px;border-left:1px solid #DAD3C2;border-right:1px solid #DAD3C2;border-bottom:1px solid #DAD3C2;">
+      ${exames}
+      ${modalidade}
+    </div>
+
+    ${titulo('🔬','Exames Complementares')}
+    <div style="padding:14px;border-left:1px solid #DAD3C2;border-right:1px solid #DAD3C2;border-bottom:1px solid #DAD3C2;">
+      ${comps}
+    </div>
+
+    ${obsBloco}
+
+    ${titulo('✍️','Responsável pelo Preenchimento')}
+    <table style="width:100%;border-collapse:collapse;border-left:1px solid #DAD3C2;border-right:1px solid #DAD3C2;border-bottom:1px solid #DAD3C2;">
+      ${linha('Nome', v('Responsavel_Nome'))}
+      ${linha('E-mail', v('Responsavel_Email'))}
+      ${linha('Data de Preenchimento', v('Data_Preenchimento_BR'))}
+    </table>
+
+  </div>
+
+  <div style="background:#1B2A41;padding:14px 28px;border-radius:0 0 8px 8px;text-align:center;font-size:11px;color:#B8C4D0;">
+    Escritório Contábil Betel &nbsp;·&nbsp; Julio Cezar Lopes &nbsp;·&nbsp; Tel: (44) 3228-8785
+  </div>
+
+</div>
+</body></html>`;
+  }
 </script>
 </body>
 </html>
